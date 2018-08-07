@@ -12,11 +12,22 @@ import (
 // Regexp
 ////////////////////////////////////////////////////////////////////////////////
 
+// Regexp is a compiled regular expression.
 type Regexp struct {
 	start, term node
-	pattern string
+	pattern     string
 }
 
+// Compile compiles a pattern into Regexp.
+func Compile(pattern string) (r *Regexp, err error) {
+	r = &Regexp{pattern: pattern}
+	if r.start, r.term, err = parse(pattern); err != nil {
+		return nil, err
+	}
+	return
+}
+
+// MustCompile invokes Compile and panics if an error is returned.
 func MustCompile(pattern string) *Regexp {
 	r, err := Compile(pattern)
 	if err != nil {
@@ -25,18 +36,11 @@ func MustCompile(pattern string) *Regexp {
 	return r
 }
 
-func Compile(pattern string) (r *Regexp, err error) {
-	r = &Regexp{pattern: pattern}
-	if  r.start, r.term, err = parse(pattern); err != nil {
-		return nil, err
-	}
-	return
-}
-
-func (r *Regexp) MatchString(in string) bool {
+// MatchString returns true if the the passed input matches the pattern.
+func (r *Regexp) MatchString(input string) bool {
 	cur, next := nodeSet{}, nodeSet{}
 	cur.add(r.start)
-	for _, r := range in {
+	for _, r := range input {
 		for n := range cur {
 			if m, ok := n.(matchNode); ok && m.matches(r) {
 				next.add(m.next())
@@ -118,8 +122,6 @@ type (
 func (n dotNode) matches(_ rune) bool     { return true }
 func (n literalNode) matches(r rune) bool { return r == n.r }
 
-
-
 type parser struct {
 	in    string
 	pos   int
@@ -162,7 +164,7 @@ func parse(in string) (start, end node, err error) {
 // expr is a graph of nodes with a start and an end
 type expr struct{ start, end nodeBuilder }
 
-func (e expr) isEmpty() bool { return e == expr{}}
+func (e expr) isEmpty() bool { return e == expr{} }
 
 // parseClause parses a sequence of terms connected by '|' or concatenation.
 func parseClause(p *parser) (e expr, err error) {
@@ -280,7 +282,6 @@ func parseMeta(p *parser, term expr) (e expr, err error) {
 	e = concatNode(term, n)
 	return
 }
-
 
 func concatNode(e expr, n nodeBuilder) expr {
 	return concat(e, expr{n, n})
