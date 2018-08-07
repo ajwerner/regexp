@@ -60,6 +60,12 @@ func TestCases(t *testing.T) {
 		{"\\y", "", false, true},
 		{"()|a", "a", true, false},
 		{"()||", "a", false, true},
+		{"|", "", false, true},
+		{"|a", "", false, true},
+		{"()", "", true, false},
+		{"()|()", "", true, false},
+		{"\u0000", "\u0000", true, false},
+		{"", "\u0000", false, false},
 	} {
 		t.Run(c.String(), c.run)
 	}
@@ -79,7 +85,6 @@ func (c *testCase) String() string {
 }
 
 func (c *testCase) run(t *testing.T) {
-	fmt.Printf("%q\n", c.pattern)
 	r, err := Compile(c.pattern)
 	if err == nil && c.compileError {
 		t.Fatalf("Expected error for #%q", c.pattern)
@@ -89,6 +94,15 @@ func (c *testCase) run(t *testing.T) {
 	} else if matches := r.MatchString(c.in); matches != c.result {
 		t.Fatalf("match(%v, %v) != %v", c.pattern, c.in, c.result)
 	}
+	// TODO: compare against the stdlib implementation
+	// re, reErr := regexp.Compile("^"+c.pattern+"$")
+	// if reErr == nil && err != nil {
+	// 	t.Fatalf("regexp returned nil but we returned %v", err)
+	// } else if reErr != nil && err == nil {
+	// 	t.Fatalf("regexp returned %v but we returned nil", reErr)
+	// } else if reErr == nil && err == nil && re.MatchString(c.in) != c.result {
+	// 	t.Fatalf("regexp results in %v for %q/%q unlike us", !c.result, c.pattern, c.in)
+	// }
 	defer func() {
 		if r := recover(); r != nil {
 			if !c.compileError {
