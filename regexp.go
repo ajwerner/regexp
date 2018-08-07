@@ -207,8 +207,6 @@ func parseTerm(p *parser) (e expr, err error) {
 	switch r := p.peek(); r {
 	case '?', '+', '*':
 		return expr{}, fmt.Errorf("Invalid character %c at pos %d", r, p.pos)
-	case ')', '|', utf8.RuneError:
-		panic("Invalid character in parseTerm")
 	case '(':
 		pf = parseSubexp
 	case '\\':
@@ -270,21 +268,13 @@ func parseMeta(p *parser, term expr) (e expr, err error) {
 	switch mc {
 	case '+':
 		n = &plusNode{}
+		n.addEpsilon(term.start)
 	case '*':
 		n = &starNode{}
+		n.addEpsilon(term.start)
+		term.start.addEpsilon(n)
 	case '?':
 		n = &qmarkNode{}
-	default:
-		// programmer error
-		panic(fmt.Errorf("Unknown meta char %c", mc))
-	}
-	switch n.(type) {
-	case *plusNode:
-		n.addEpsilon(term.start)
-	case *qmarkNode:
-		term.start.addEpsilon(n)
-	case *starNode:
-		n.addEpsilon(term.start)
 		term.start.addEpsilon(n)
 	}
 	e = concatNode(term, n)

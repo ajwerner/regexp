@@ -1,8 +1,8 @@
 package regexp
 
 import (
-	"testing"
 	"fmt"
+	"testing"
 )
 
 func TestCases(t *testing.T) {
@@ -28,6 +28,7 @@ func TestCases(t *testing.T) {
 		{"ERROR: .*", "ERROR: file not found", true, false},
 		{"ERROR: .*", "WARNING: file not found", false, false},
 		{"**", "", false, true},
+		{"(**)", "", false, true},
 		{"*.*", "", false, true},
 		{"+.?.", "aa", false, true},
 		{"+.*", "a", false, true},
@@ -56,18 +57,21 @@ func TestCases(t *testing.T) {
 		{"(a(as)())(", "", false, true},
 		{"(a(as)())()", "aas", true, false},
 		{"]", "*(ab)a", false, false},
+		{"\\y", "", false, true},
+		{"()|a", "a", true, false},
+		{"()||", "a", false, true},
 	} {
 		t.Run(c.String(), c.run)
 	}
 }
 
 type testCase struct {
-	pattern, in string
-	result      bool
-	compileError      bool
+	pattern, in  string
+	result       bool
+	compileError bool
 }
 
-func (c *testCase) String() string{
+func (c *testCase) String() string {
 	if c.compileError {
 		return fmt.Sprintf("error on #%q", c.pattern)
 	}
@@ -75,22 +79,24 @@ func (c *testCase) String() string{
 }
 
 func (c *testCase) run(t *testing.T) {
-	defer func() {
-		if r := recover(); r != nil {
-			if !c.compileError {
-				panic(r)
-			}
-		} else if c.compileError {
-			panic(fmt.Errorf("expected %v to panic", c.pattern))
-		}
-	}()
+	fmt.Printf("%q\n", c.pattern)
 	r, err := Compile(c.pattern)
 	if err == nil && c.compileError {
 		t.Fatalf("Expected error for #%q", c.pattern)
 	} else if err != nil && !c.compileError {
 		t.Fatalf("Unexpected error for %#q: %v", c.pattern, err)
-	}
-	if matches := r.MatchString( c.in); matches != c.result {
+	} else if c.compileError {
+	} else if matches := r.MatchString(c.in); matches != c.result {
 		t.Fatalf("match(%v, %v) != %v", c.pattern, c.in, c.result)
 	}
+	defer func() {
+		if r := recover(); r != nil {
+			if !c.compileError {
+				t.Fatalf("MustCompile panicked for #%q", c.pattern)
+			}
+		} else if c.compileError {
+			t.Fatalf("MustCompile didn't panic for #%q", c.pattern)
+		}
+	}()
+	MustCompile(c.pattern)
 }
